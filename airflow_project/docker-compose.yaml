@@ -1,0 +1,160 @@
+x-airflow-common: &airflow-common
+  build:
+    context: .
+    dockerfile: Dockerfile
+  environment: &airflow-common-env
+    AIRFLOW__CORE__EXECUTOR: LocalExecutor
+    AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/airflow
+    AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+    AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: "true"
+    AIRFLOW__CORE__DEFAULT_TIMEZONE: "Europe/Paris"
+    AIRFLOW_UID: "50000"
+    _PIP_ADDITIONAL_REQUIREMENTS: ${_PIP_ADDITIONAL_REQUIREMENTS:-}
+
+    # --- Specifique Airflow 3 ---
+    # Les composants passent par l'API du api-server (AIP-72) pour executer
+    # les taches, au lieu de parler a la base directement.
+    AIRFLOW__CORE__EXECUTION_API_SERVER_URL: "http://airflow-api-server:8080/execution/"
+    # Signe les JWT internes entre composants. A changer hors formation/local.
+    AIRFLOW__API_AUTH__JWT_SECRET: "${AIRFLOW__API_AUTH__JWT_SECRET:-formation-dev-secret-change-me}"
+    # FabAuthManager (au lieu du Simple Auth Manager par defaut) pour garder
+    # un login admin/admin stable.
+    AIRFLOW__CORE__AUTH_MANAGER: airflow.providers.fab.auth_manager.fab_auth_manager.FabAuthManager
+
+    # Connexion Airflow -> Spark (SparkSubmitOperator, conn_id="spark_default").
+    # "host" doit garder le prefixe "spark://", sinon bug connu du hook
+    # ("Could not parse Master URL"). Voir apache/airflow#46169.
+    AIRFLOW_CONN_SPARK_DEFAULT: >-
+      {"conn_type": "spark", "host": "spark://spark-master", "port": 7077,
+      "extra": {"deploy-mode": "client"}}
+
+    KAGGLE_USERNAME: "${KAGGLE_USERNAME:-}"
+    KAGGLE_KEY: "${KAGGLE_KEY:-}"
+  env_file:
+    - path: ../spark_project/.env
+      required: false
+  volumes:
+    - ./dags:/opt/airflow/dags
+    - ./logs:/opt/airflow/logs
+    - ./plugins:/opt/airflow/plugins
+    - ./tests:/opt/airflow/tests
+    # Fichiers du job Spark, montes pour que spark-submit (mode client)
+    # puisse lire le script localement.
+    - ../spark_project/jobs:/opt/spark-jobs
+    - ../spark_project/data:/opt/spark-data
+    - ../spark_project/settings.py:/opt/spark-jobs/settings.py
+    - ../spark_project/ingestion:/opt/ingestion
+    - ../spark_project/export:/opt/export
+    - ../spark_project/settings.py:/opt/export/settings.py
+  user: "${AIRFLOW_UID:-50000}:0"
+  networks:
+    - default
+    - formation_network
+  depends_on: &airflow-common-depends-on
+    postgres:
+      condition: service_healthy
+
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: airflow
+      POSTGRES_PASSWORD: airflow
+      POSTGRES_DB: airflow
+    volumes:
+      - postgres-db-volume:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "airflow"]
+      interval: 10s
+      retries: 5
+      start_period: 5s
+    restart: always
+
+  airflow-init:
+    <<: *airflow-common
+    entrypoint: /bin/bash
+    command:
+      - -c
+      - |
+        airflow db migrate
+        airflow users create \
+          --username "${_AIRFLOW_WWW_USER_USERNAME:-admin}" \
+          --password "${_AIRFLOW_WWW_USER_PASSWORD:-admin}" \
+          --firstname Admin \
+          --lastname Admin \
+          --role Admin \
+          --email admin@example.com
+    environment:
+      <<: *airflow-common-env
+      _AIRFLOW_DB_MIGRATE: "true"
+    depends_on:
+      <<: *airflow-common-depends-on
+
+  airflow-api-server:
+    <<: *airflow-common
+    command: api-server
+    ports:
+      - "8080:8080"
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:8080/api/v2/monitor/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    restart: always
+    depends_on:
+      <<: *airflow-common-depends-on
+      airflow-init:
+        condition: service_completed_successfully
+
+  airflow-scheduler:
+    <<: *airflow-common
+    command: scheduler
+    healthcheck:
+      test: ["CMD-SHELL", 'airflow jobs check --job-type SchedulerJob --hostname "$${HOSTNAME}"']
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    restart: always
+    depends_on:
+      <<: *airflow-common-depends-on
+      airflow-init:
+        condition: service_completed_successfully
+
+  # Composant obligatoire depuis Airflow 3 : le scheduler ne parse plus les
+  # DAGs lui-meme, c'est le role du dag-processor.
+  airflow-dag-processor:
+    <<: *airflow-common
+    command: dag-processor
+    healthcheck:
+      test: ["CMD-SHELL", 'airflow jobs check --job-type DagProcessorJob --hostname "$${HOSTNAME}"']
+      interval: 60s
+      timeout: 20s
+      retries: 5
+      start_period: 60s
+    restart: always
+    depends_on:
+      <<: *airflow-common-depends-on
+      airflow-init:
+        condition: service_completed_successfully
+
+  # Gere les taches "deferrable" (pas utilise par nos DAGs actuels, mais
+  # present par defaut dans une installation Airflow 3 standard).
+  airflow-triggerer:
+    <<: *airflow-common
+    command: triggerer
+    restart: always
+    depends_on:
+      <<: *airflow-common-depends-on
+      airflow-init:
+        condition: service_completed_successfully
+
+networks:
+  # Reseau partage avec spark_project, cree une seule fois manuellement :
+  #   docker network create formation_network
+  formation_network:
+    external: true
+
+volumes:
+  postgres-db-volume:

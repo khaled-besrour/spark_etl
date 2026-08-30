@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+*.egg-info/
+
+# Airflow
+airflow_project/logs/*
+!airflow_project/logs/.gitkeep
+airflow_project/.env
+airflow_project/airflow.db
+airflow_project/airflow-webserver.pid
+
+# Spark
+spark_project/**/_SUCCESS
+spark_project/**/*.crc
+spark_project/output/
+spark_project/data/raw/
+spark_project/.env
+
+# IDE / OS
+.idea/
+.vscode/
+.DS_Store
