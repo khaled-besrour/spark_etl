@@ -13,9 +13,9 @@ def build_spark_session(app_name: str = "example_word_count") -> SparkSession:
 def count_words(spark: SparkSession, input_path: str) -> DataFrame:
     lines = spark.read.text(input_path)
 
-    words = lines.select(
-        F.explode(F.split(F.lower(F.col("value")), r"\s+")).alias("word")
-    ).filter(F.col("word") != "")
+    words = lines.select(F.explode(F.split(F.lower(F.col("value")), r"\s+")).alias("word")).filter(
+        F.col("word") != ""
+    )
 
     return words.groupBy("word").count().orderBy(F.col("count").desc())
 

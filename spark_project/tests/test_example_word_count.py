@@ -13,9 +13,7 @@ DATA_PATH = os.path.join(os.path.dirname(__file__), "..", "data", "sample.txt")
 @pytest.fixture(scope="module")
 def spark() -> SparkSession:
     session = (
-        SparkSession.builder.master("local[1]")
-        .appName("test_example_word_count")
-        .getOrCreate()
+        SparkSession.builder.master("local[1]").appName("test_example_word_count").getOrCreate()
     )
     yield session
     session.stop()

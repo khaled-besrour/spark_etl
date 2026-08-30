@@ -19,7 +19,7 @@ from settings import settings  # noqa: E402
 
 
 def build_features(df: DataFrame) -> DataFrame:
-    return df.groupBy("product_id", "month").agg(
+    return df.groupBy("product_id", "year", "month").agg(
         F.countDistinct("store_id").alias("num_stores"),
         F.sum("stock").alias("total_stock"),
         F.avg("price").alias("avg_price"),

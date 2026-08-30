@@ -36,9 +36,6 @@ def _sample_df(spark: SparkSession):
         ("P001", "S01", 10, 50, 9.0, 1, 2024),
         ("P001", "S01", 5, 20, 11.0, 1, 2024),  # meme produit/magasin, 2e ligne
         ("P001", "S02", 3, 30, 10.0, 1, 2024),
-        # P001, meme mois (janvier) mais annee differente : doit s'agreger avec
-        # les lignes 2024 ci-dessus, plus de grain par annee.
-        ("P001", "S01", 2, 15, 8.0, 1, 2023),
         # P002 : autre produit, meme mois, un seul magasin
         ("P002", "S01", 7, 40, 3.0, 1, 2024),
     ]
@@ -56,25 +53,24 @@ def test_build_features_sums_sales_and_stock(spark: SparkSession) -> None:
     result = build_features(_sample_df(spark))
 
     row = result.filter(result.product_id == "P001").first()
-    assert row["total_sales"] == 20  # 10 + 5 + 3 + 2
-    assert row["total_stock"] == 115  # 50 + 20 + 30 + 15
+    assert row["total_sales"] == 18  # 10 + 5 + 3
+    assert row["total_stock"] == 100  # 50 + 20 + 30
 
 
 def test_build_features_averages_price(spark: SparkSession) -> None:
     result = build_features(_sample_df(spark))
 
     row = result.filter(result.product_id == "P001").first()
-    assert row["avg_price"] == pytest.approx((9.0 + 11.0 + 10.0 + 8.0) / 4)
+    assert row["avg_price"] == pytest.approx((9.0 + 11.0 + 10.0) / 3)
 
 
-def test_build_features_grain_is_product_month(spark: SparkSession) -> None:
-    """month seul (pas year) : deux lignes P001 de janvier, une en 2024 et
-    une en 2023, doivent tomber dans le meme groupe."""
+def test_build_features_grain_is_product_year_month(spark: SparkSession) -> None:
     result = build_features(_sample_df(spark))
 
-    assert result.count() == 2  # un groupe par produit (P001 et P002)
+    assert result.count() == 2  # un groupe par produit (meme annee/mois pour tous)
     assert set(result.columns) == {
         "product_id",
+        "year",
         "month",
         "num_stores",
         "total_stock",

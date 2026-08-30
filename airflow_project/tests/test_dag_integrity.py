@@ -19,9 +19,9 @@ def dagbag() -> DagBag:
 
 
 def test_no_import_errors(dagbag: DagBag) -> None:
-    assert not dagbag.import_errors, (
-        f"Erreurs d'import detectees dans les DAGs : {dagbag.import_errors}"
-    )
+    assert (
+        not dagbag.import_errors
+    ), f"Erreurs d'import detectees dans les DAGs : {dagbag.import_errors}"
 
 
 def test_at_least_one_dag_loaded(dagbag: DagBag) -> None:

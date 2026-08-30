@@ -48,33 +48,33 @@ def retail_sales_elt_dag():
         return RAW_DATA_DIR
 
     submit_retail_sales_elt = build_spark_submit_task(
-        task_id="submit_retail_sales_elt",
+        task_id="RAW_injection",
         application="/opt/spark-jobs/retail_sales_elt.py",
         application_args=["--input", RAW_DATA_DIR],
     )
 
     submit_retail_sales_stats = build_spark_submit_task(
-        task_id="submit_retail_sales_stats",
+        task_id="RAW_stats",
         application="/opt/spark-jobs/retail_sales_stats.py",
     )
 
     submit_retail_sales_staging = build_spark_submit_task(
-        task_id="submit_retail_sales_staging",
+        task_id="Staging_filters",
         application="/opt/spark-jobs/retail_sales_staging.py",
     )
 
     submit_retail_sales_intermediate = build_spark_submit_task(
-        task_id="submit_retail_sales_intermediate",
+        task_id="Intermediate_feature",
         application="/opt/spark-jobs/retail_sales_intermediate.py",
     )
 
     submit_retail_sales_training_table = build_spark_submit_task(
-        task_id="submit_retail_sales_training_table",
+        task_id="Training_feature",
         application="/opt/spark-jobs/retail_sales_training_table.py",
     )
 
     submit_parquet_export = build_spark_submit_task(
-        task_id="submit_parquet_export",
+        task_id="Parquet_export",
         application="/opt/export/parquet_exporter.py",
     )
 
