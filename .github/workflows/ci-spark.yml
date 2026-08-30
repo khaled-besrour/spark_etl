@@ -66,7 +66,7 @@ jobs:
         run: pip install -r requirements-dev.txt
 
       - name: Run pytest
-        run: pytest tests --maxfail=1 -v
+        run: python -m pytest tests --maxfail=1 -v
 
   docker-build:
     name: Docker build
