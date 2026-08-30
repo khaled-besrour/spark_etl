@@ -1,0 +1,3 @@
+Spark spark Airflow airflow
+Ce fichier sert d'exemple pour le job de comptage de mots (jobs/example_word_count.py).
+Il est utilise par le DAG hello_world_dag et par les tests unitaires du projet.
