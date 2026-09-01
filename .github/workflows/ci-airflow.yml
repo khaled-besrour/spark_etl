@@ -68,7 +68,7 @@ jobs:
       - name: Run pytest
         env:
           AIRFLOW_HOME: ${{ github.workspace }}/airflow_project
-        run: pytest tests --maxfail=1 -v
+        run: python -m pytest tests --maxfail=1 -v
 
   docker-build:
     name: Docker build

@@ -60,7 +60,7 @@ def test_global_object_key_is_null_safe(spark: SparkSession) -> None:
     hashage ne doivent pas produire le meme hash."""
     rows = [
         ("P001", "S01", dt.date(2024, 1, 15), 10, 99.9, 50, 9.99, 1, 3, "Monday", 2024, "C01"),
-        ("P001", "S01", dt.date(2024, 1, 15), None, 99.9, 50, 9.99, 1, 3, "Monday", 2024, "C01"),
+        ("P001", "S01", dt.date(2024, 1, 15), 10, 99.9, 50, None, 1, 3, "Monday", 2024, "C01"),
     ]
     df = spark.createDataFrame(rows, schema=SCHEMA)
     keys = [row["global_object_key"] for row in add_global_object_key(df).collect()]
@@ -81,15 +81,15 @@ def test_reject_reason_flags_zero_business_values(spark: SparkSession) -> None:
     rows = [
         # stock a 0 : rejetee, meme si toutes les colonnes pertinentes sont renseignees
         ("P010", "S01", dt.date(2024, 1, 15), 10, 99.9, 0, 9.99, 1, 3, "Monday", 2024, "C01"),
-        # sales ET revenue a 0 : les deux motifs apparaissent
-        ("P011", "S01", dt.date(2024, 1, 15), 0, 0.0, 5, 9.99, 1, 3, "Monday", 2024, "C01"),
+        # price ET stock a 0 : les deux motifs apparaissent
+        ("P011", "S01", dt.date(2024, 1, 15), 5, 0.0, 0, 0.0, 1, 3, "Monday", 2024, "C01"),
     ]
     df = spark.createDataFrame(rows, schema=SCHEMA)
     result = add_reject_reason(df)
 
     reasons = {row["product_id"]: row["reject_reason"] for row in result.collect()}
     assert reasons["P010"] == "stock=0"
-    assert reasons["P011"] == "sales=0, revenue=0"
+    assert reasons["P011"] == "price=0, stock=0"
 
 
 def test_split_valid_rejected(spark: SparkSession) -> None:
