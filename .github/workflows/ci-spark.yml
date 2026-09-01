@@ -91,6 +91,5 @@ jobs:
       - name: Tag and push image (latest)
         if: github.event_name == 'push'
         run: |
-          IMAGE="ghcr.io/$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')-spark"
-          docker tag spark-formation:4.1.3 "$IMAGE:latest"
-          docker push "$IMAGE:latest"
+          docker tag spark-formation:4.1.3 ghcr.io/khaled-besrour/spark-formation:latest
+          docker push ghcr.io/khaled-besrour/spark-formation:latest
