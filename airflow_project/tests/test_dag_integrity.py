@@ -2,13 +2,13 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from airflow.models import DagBag
+from airflow.dag_processing.dagbag import DagBag
 
 DAGS_FOLDER = Path(__file__).resolve().parent.parent / "dags"
 
 
 def _dagbag() -> DagBag:
-    return DagBag(dag_folder=str(DAGS_FOLDER), include_examples=False)
+    return DagBag(dag_folder=str(DAGS_FOLDER))
 
 
 def test_dagbag_has_no_import_errors() -> None:
